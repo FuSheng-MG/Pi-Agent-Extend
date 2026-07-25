@@ -14,41 +14,32 @@ Pi Coding Agent 扩展集合，增强 AI 助手的各项能力。
 
 ### 功能
 
-本扩展为 Pi Coding Agent 添加了完整的中文语言支持：
+本扩展通过 **四层注入策略** 确保 AI 使用中文思考和回复：
 
-- **全中文回复** — 所有对话输出使用简体中文
-- **中文推理链** — 强制 AI 的内部思维/推理过程使用中文
-- **代码注释中文** — 代码注释、解释、调试信息均为中文
-- **Provider 级注入** — 在 `before_provider_request` 钩子中额外注入语言指令，确保推理模型也能收到
-- **启动通知** — 会话启动时显示中文模式已激活的通知
+| 层级 | 钩子 | 策略 |
+|------|------|------|
+| 🥇 第 1 层 | `before_agent_start` | **前置**语言指令到 system prompt **开头**（非追加末尾），模型更重视开头内容 |
+| 🥇 第 2 层 | `session_start` | 启动通知，提示中文模式已激活 |
+| 🥇 第 3 层 | `before_provider_request` | 在 system 消息开头**再次前置**语言指令，覆盖 provider 请求 |
+| 🥇 第 4 层 | `before_provider_request` | 在每个用户消息末尾追加提醒，专门针对推理模型的 reasoning 字段 |
 
 ### 保留英文不变的内容
 
 - 技术术语（JavaScript、Promise、HTTP、API、JSON 等）
 - 变量名、函数名、类名
 - 库/框架/工具名称
+- 文件路径、URL、命令行参数
 
 ### 安装方法
-
-#### 方式一：复制到扩展目录
 
 ```bash
 cp src/chinese-mode.ts ~/.pi/agent/extensions/
 ```
 
-#### 方式二：安装为 npm 包（待发布后）
-
-```bash
-npm install pi-agent-extend
-```
-
 ### 开发
 
 ```bash
-# 安装依赖
 npm install
-
-# TypeScript 类型检查
 npm run lint
 ```
 
