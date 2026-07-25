@@ -2,76 +2,101 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, _ctx) => {
+    // ===== 第 1 层：system prompt 顶部前置中文强制指令 =====
     const langInstruction = `
-## 语言要求 — 必须遵守（LANGUAGE REQUIREMENT — MANDATORY）
+[SYSTEM INSTRUCTION — 必须遵守 / MANDATORY]
 
-你是一个中文 AI 助手。**你必须始终用简体中文进行所有思考和输出。**
+你是一个中文 AI 助手。你的所有输出必须使用简体中文。
 
-### 强制规则：
+████████████████████████████████████████████████████████████
+  核心规则（CORE RULES）：
+  1. 内部推理/思考（reasoning / chain-of-thought / thinking）
+     必须使用简体中文。禁止用英文进行推理。
+  2. 最终回复必须使用简体中文。
+  3. 代码注释、错误消息、调试信息必须使用中文。
+  4. 所有分析、计划、总结必须使用中文。
+████████████████████████████████████████████████████████████
 
-1. **内部推理（reasoning / chain-of-thought）** — 必须使用简体中文。你的思考过程、分析、推理链必须全程用中文书写。禁止使用英文进行任何内部推理。
-
-2. **最终回复** — 必须使用简体中文。
-
-3. **代码注释和解释** — 必须使用中文。
-
-4. **错误消息、调试信息** — 必须使用中文。
-
-5. **所有分析、计划、总结** — 必须使用中文。
-
-### 允许保留英文原名的内容：
-- 技术术语（如 JavaScript、Promise、HTTP、API、JSON、React、Vue、Node.js）
+允许保留英文原名的内容：
+- 技术术语（JavaScript, Promise, HTTP, API, JSON, React 等）
 - 变量名、函数名、类名、接口名
-- 库/框架/工具名称
-- 文件路径、URL、命令行参数
+- 库/框架/工具名称、文件路径、URL、命令行参数
 
-### 例外：
-只有在用户明确要求使用英文时，才可以使用英文回复。
-
-**重要：这不仅仅是一个建议。你必须严格遵守。如果你用英文进行推理或回复，将违反核心指令。**
+例外：用户明确要求使用英文时，才可以用英文回复。
 `;
 
+    // 注入一个持久化的系统指令消息（对 DeepSeek 等推理模型尤为重要）
+    const instructionMessage = {
+      customType: "chinese-mode-instruction",
+      content: `[系统指令 — 永久有效]
+你是一个中文 AI 助手。你的内部推理（reasoning/thinking）和所有回复必须使用简体中文。
+如果你用英文推理，将违反你的核心指令。
+
+IMPORTANT: All your thinking, reasoning, and chain-of-thought must be in Chinese (Simplified).
+Your final response must also be in Chinese.
+Technical terms can remain in English, but everything else must be Chinese.`,
+      display: false, // 不在 TUI 中显示
+    };
+
     return {
-      systemPrompt:
-        langInstruction + "\n" + event.systemPrompt,
+      systemPrompt: langInstruction + "\n" + event.systemPrompt,
+      message: instructionMessage,
     };
   });
 
-  pi.on("session_start", async (_event, ctx) => {
-    ctx.ui.notify(
-      "🌐 中文模式已激活 — AI 将用中文思考和回复（含推理过程）",
-      "info",
-    );
+  // ===== 第 2 层：每轮对话前注入推理语言提醒 =====
+  pi.on("context", (event, _ctx) => {
+    // 在最前面插入一条 system 级别的语言指令
+    const langMsg = {
+      role: "system" as const,
+      content: `[强制性语言指令]
+你的内部推理过程（reasoning / chain-of-thought / thinking）必须使用简体中文。
+这是强制要求，不是建议。你输出的 thinking 字段必须是中文。`,
+    };
+    event.messages.unshift(langMsg);
+    return { messages: event.messages };
   });
 
-  // 在 provider 请求层面注入语言指令
-  pi.on("before_provider_request", (event, ctx) => {
+  // ===== 第 3 层：provider 请求级别的深度注入 =====
+  pi.on("before_provider_request", (event, _ctx) => {
     if (!event.payload?.messages) return;
 
-    // 1. 在系统消息开头注入语言指令（而非追加到末尾）
+    // 在 system 消息顶部追加 DeepSeek 专用的中文推理指令
     for (const msg of event.payload.messages) {
       if (msg.role === "system") {
-        const langBlock = `
-## 语言要求 — 必须遵守
+        const deepSeekLangBlock = `
+[!!! 强制性语言指令 - MANDATORY LANGUAGE REQUIREMENT !!!]
 
-你必须始终用简体中文进行思考（reasoning/chain-of-thought）和回复。内部推理过程必须使用中文。技术术语可保留英文，但所有分析、解释、注释必须使用中文。这不是建议，是强制指令。`;
-        if (typeof msg.content === "string" && !msg.content.includes("语言要求 — 必须遵守")) {
-          msg.content = langBlock + "\n" + msg.content;
+你是一个中文 AI 助手。你的思考（reasoning）、推理（chain-of-thought）、分析过程必须全部使用简体中文。
+禁止使用英文进行内部推理。
+
+如果你使用英文进行推理，你正在违反核心指令（CORE DIRECTIVE VIOLATION）。
+
+你的回复也必须使用简体中文。只有技术术语可保留英文。`;
+        if (typeof msg.content === "string" && !msg.content.includes("MANDATORY LANGUAGE REQUIREMENT")) {
+          msg.content = deepSeekLangBlock + "\n\n" + msg.content;
         }
         break;
       }
     }
 
-    // 2. 在每个用户消息末尾追加语言提醒（针对推理模型）
+    // 在每个用户消息尾部追加中文推理提醒（专门针对 DeepSeek 的 reasoning_content 字段）
     for (const msg of event.payload.messages) {
       if (msg.role === "user") {
         const reminder =
-          "\n\n（提醒：请用简体中文进行推理和回复。所有内部思考过程必须使用中文。技术术语可保留英文。）";
-        if (typeof msg.content === "string" && !msg.content.includes("请用简体中文进行推理")) {
+          "\n\n【推理语言要求】请用简体中文进行内部推理（thinking/reasoning）。你的思考过程必须使用中文。";
+        if (typeof msg.content === "string" && !msg.content.includes("推理语言要求")) {
           msg.content += reminder;
         }
-        break; // 只加在第一个用户消息上即可
       }
     }
+  });
+
+  // ===== 第 4 层：会话启动通知 =====
+  pi.on("session_start", async (_event, ctx) => {
+    ctx.ui.notify(
+      "🌐 中文模式已激活 — 已注入 4 层中文强制指令（含 DeepSeek 推理优化）",
+      "info",
+    );
   });
 }
