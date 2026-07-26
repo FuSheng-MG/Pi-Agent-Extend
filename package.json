@@ -1,24 +1,31 @@
 {
   "name": "pi-agent-extend",
   "version": "1.0.0",
-  "description": "Pi Coding Agent 扩展集合 — 增强 AI 助手的中文支持能力",
-  "keywords": ["pi", "pi-coding-agent", "extension", "chinese", "中文"],
+  "description": "🌐 Pi Coding Agent 中文模式扩展 — 强制 AI 用简体中文思考和回复",
+  "keywords": ["pi", "pi-coding-agent", "extension", "chinese", "zhongwen", "中文", "pi-package"],
   "license": "MIT",
   "author": "FuSheng-MG",
   "type": "module",
-  "main": "src/chinese-mode.ts",
   "files": ["src/"],
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  },
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit"
   },
-  "dependencies": {
-    "@earendil-works/pi-coding-agent": "^2.0.0"
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.82.0",
     "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FuSheng-MG/Pi-Agent-Extend"
   }
 }
