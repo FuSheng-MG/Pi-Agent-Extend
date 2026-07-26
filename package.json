@@ -1,14 +1,26 @@
 {
-  "name": "pi-agent-extend",
+  "name": "pi-cn-mode",
   "version": "1.0.0",
   "description": "🌐 Pi Coding Agent 中文模式扩展 — 强制 AI 用简体中文思考和回复",
-  "keywords": ["pi", "pi-coding-agent", "extension", "chinese", "zhongwen", "中文", "pi-package"],
+  "keywords": [
+    "pi",
+    "pi-coding-agent",
+    "extension",
+    "chinese",
+    "zhongwen",
+    "中文",
+    "pi-package"
+  ],
   "license": "MIT",
   "author": "FuSheng-MG",
   "type": "module",
-  "files": ["src/"],
+  "files": [
+    "src/"
+  ],
   "pi": {
-    "extensions": ["./src/index.ts"]
+    "extensions": [
+      "./src/index.ts"
+    ]
   },
   "scripts": {
     "build": "tsc",
@@ -26,6 +38,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/FuSheng-MG/Pi-Agent-Extend"
+    "url": "https://github.com/FuSheng-MG/pi-cn-mode"
   }
 }
